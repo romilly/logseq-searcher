@@ -85,17 +85,24 @@ def get_cursor():
         conn.close()
 
 
+# Embedding dimension for nomic-embed-text
+EMBEDDING_DIM = 768
+
+
 def create_schema():
-    """Create the documents table with full-text search support.
+    """Create the documents table with full-text search and vector support.
 
     This will drop any existing documents table and recreate it.
     """
     with get_cursor() as cur:
+        # Enable pgvector extension
+        cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+
         # Drop existing table if it exists
         cur.execute("DROP TABLE IF EXISTS documents CASCADE")
 
-        # Create table with tsvector column
-        cur.execute("""
+        # Create table with tsvector and embedding columns
+        cur.execute(f"""
             CREATE TABLE documents (
                 id SERIAL PRIMARY KEY,
                 filename TEXT NOT NULL,
@@ -103,6 +110,7 @@ def create_schema():
                 title TEXT NOT NULL,
                 content TEXT NOT NULL,
                 content_tsv TSVECTOR,
+                embedding vector({EMBEDDING_DIM}),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -111,6 +119,12 @@ def create_schema():
         cur.execute("""
             CREATE INDEX documents_content_tsv_idx
             ON documents USING GIN (content_tsv)
+        """)
+
+        # Create HNSW index for fast vector similarity search
+        cur.execute("""
+            CREATE INDEX documents_embedding_idx
+            ON documents USING hnsw (embedding vector_cosine_ops)
         """)
 
         # Create trigger to auto-update tsvector on insert/update

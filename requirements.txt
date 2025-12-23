@@ -1,6 +1,7 @@
 # Production dependencies
 psycopg2-binary>=2.9.0
 python-dotenv>=1.0.0
+ollama>=0.3.0
 
 # For running notebooks
 notebook>=7.0.0
